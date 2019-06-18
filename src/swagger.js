@@ -84,11 +84,34 @@ const renameGraphqlParametersToSwaggerParameters = (graphqlParameters, parameter
   return result;
 };
 
+const initialIndex = 2;
+const intSuffixRegex = /\_([0-9]+)$/;
+const findNextTypeName = (typeName, typeKeys) => {
+  let index = initialIndex;
+  let newTypeName = typeName;
+
+  do {
+    const lastInt = newTypeName.match(intSuffixRegex);
+
+    if (lastInt) {
+      try {
+        index = parseInt(lastInt[1], 10) + 1;
+      } catch (e) {
+        index = initialIndex;
+      }
+    }
+
+    newTypeName = [typeName, index].join('_');
+  } while (typeKeys.includes(newTypeName));
+  return newTypeName;
+};
+
 /**
  * Go through schema and grab routes
  */
 export const getAllEndPoints = (schema: SwaggerSchema, refs: RefType): {[string]: Endpoint} => {
   const allTypes = {};
+  const typeKeys = [];
   const serverPath = getServerPath(schema);
   Object.keys(schema.paths).forEach(path => {
     const route = schema.paths[path];
@@ -133,7 +156,13 @@ export const getAllEndPoints = (schema: SwaggerSchema, refs: RefType): {[string]
         },
         mutation: isMutation
       };
-      allTypes[typeName] = endpoint;
+
+      let typeKey = typeName;
+      if (allTypes[typeKey]) {
+        typeKey = findNextTypeName(typeName, typeKeys);
+    typeName}
+      allTypes[typeKey] = endpoint;
+      typeKeys.push(typeKey);
     });
   });
   return allTypes;
